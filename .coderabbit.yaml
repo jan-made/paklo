@@ -51,7 +51,7 @@ reviews:
         containers and networks are cleaned up on failure, and that image tags stay pinned.
     - path: "extensions/azure/tasks/**/task.json"
       instructions: Pipeline task inputs are a public contract. Flag renamed, removed or re-defaulted inputs that break existing pipelines.
-    - path: "packages/**/*.ts"
+    - path: "{packages/**/*.ts,extensions/azure/src/**/*.ts}"
       instructions: Behaviour changes need Vitest coverage and a changeset under .changeset/.
 knowledge_base:
   code_guidelines:
