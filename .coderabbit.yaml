@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit PR review settings. AGENTS.md and similar guideline files are read as the coding guidelines.
+language: en-US
+reviews:
+  profile: chill
+  high_level_summary: true
+  poem: false
+  in_progress_fortune: false
+  sequence_diagrams: false
+  review_status: true
+  collapse_walkthrough: true
+  enable_prompt_for_ai_agents: true
+  abort_on_close: true
+  auto_review:
+    enabled: true
+    drafts: true
+    auto_incremental_review: true
+    ignore_usernames:
+      - dependabot[bot]
+  finishing_touches:
+    autofix:
+      enabled: true
+    fix_ci:
+      enabled: true
+    resolve_merge_conflict:
+      enabled: true
+    unit_tests:
+      enabled: true
+    simplify:
+      enabled: true
+  pre_merge_checks:
+    title:
+      mode: warning
+    description:
+      mode: warning
+  path_filters:
+    - "!pnpm-lock.yaml"
+    - "!skills-lock.json"
+    - "!.devcontainer/devcontainer-lock.json"
+    - "!.agents/**"
+    - "!**/CHANGELOG.md"
+    - "!**/*.png"
+  path_instructions:
+    - path: "packages/core/src/{azure,github}/**"
+      instructions: >-
+        Azure DevOps and GitHub API clients. Check that access tokens are never logged or put into URLs or error
+        messages, and that pagination, retries and API error responses are handled.
+    - path: "packages/core/src/runner/**"
+      instructions: >-
+        Runs Dependabot updater and proxy containers. Check that registry credentials only reach the proxy, that
+        containers and networks are cleaned up on failure, and that image tags stay pinned.
+    - path: "extensions/azure/tasks/**/task.json"
+      instructions: Pipeline task inputs are a public contract. Flag renamed, removed or re-defaulted inputs that break existing pipelines.
+    - path: "{packages/**/*.ts,extensions/azure/src/**/*.ts}"
+      instructions: Behaviour changes need Vitest coverage and a changeset under .changeset/.
+knowledge_base:
+  code_guidelines:
+    enabled: true
+chat:
+  auto_reply: true
