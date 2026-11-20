@@ -1,0 +1,56 @@
+# PR-Agent settings for this repository. PR-Agent reads this file from the
+# default branch (main).
+# Options: https://github.com/The-PR-Agent/pr-agent/blob/v0.50.0/pr_agent/settings/configuration.toml
+
+[github_app]
+# Review draft pull requests too, and run /describe and /review again after each push by a person.
+# The PR-Agent host skips pull requests and pushes from bot accounts.
+feedback_on_draft_pr = true
+handle_push_trigger = true
+
+[pr_reviewer]
+num_max_findings = 5
+extra_instructions = """\
+Repository rules. Check every rule in each area the diff touches. A changed line that breaks one is a finding, even when the code runs.
+
+Secrets:
+- A new token or password goes through the secret masker before anything logs it: `setSecrets` in `extensions/azure/src/common.ts`, `secretMasker` in `packages/cli/src/utils/masker.ts`, or the `SecretMasker` passed to `packages/core/src/runner/run.ts`. Tokens never appear in URLs, error messages or log lines.
+- Registry credentials reach only the proxy, through `buildProxyConfig` in `packages/core/src/runner/proxy.ts`. They never go into the updater container `Env` in `updater-builder.ts` or into the job file.
+- Files under `packages/core/fixtures/` and `bruno/` hold synthetic data: no real tokens, organisation URLs or email addresses. `bruno/.env.sample` keeps placeholder values.
+
+Runner and images (`packages/core/src/runner/`, `packages/core/docker/`):
+- Every `FROM` line in `Dockerfile.*` pins a tag and an `@sha256` digest.
+- A new `Dockerfile.*` comes with its entry in the `manifest` object in `update-containers.ts`.
+- Flag a new container or network that is not removed when a later step throws.
+
+Azure DevOps (`packages/core/src/azure/`, `extensions/azure/`):
+- Azure DevOps REST calls go through the `client-*.ts` classes and `makeUrl` in `client-base.ts`, which adds `api-version`.
+- Flag a renamed, removed or re-defaulted input in `tasks/**/task.json`; existing pipelines depend on these inputs.
+- Flag a hand edit to the version fields of `task.json` or `vss-extension.json`; `scripts/update-versions.mjs` sets them during `pnpm packages:version`.
+
+Changesets (`packages/`, `extensions/azure/src/`):
+- A behaviour change adds a changeset file in `.changeset/`.
+
+Dependencies (`pnpm-workspace.yaml`, `dependabot-action`, `dependabot-cli`, `dependabot-fetch-metadata`, `dependabot-proxy`):
+- A submodule pointer bump states its reason in the PR description.
+- Flag a `minimumReleaseAge` below `1440` or an `allowBuilds` entry set to `true`.
+"""
+
+[pr_code_suggestions]
+# Publish only suggestions scored 5 or higher (0-10).
+suggestions_score_threshold = 5
+# Drop a suggestion whose score could not be computed; the default 7 would publish it.
+score_on_reflection_failure = 4
+extra_instructions = "Prefer existing project helpers and patterns over new abstractions."
+
+[ignore]
+# Generated code and lock files. Replaces the default list; keep vendor/** first.
+glob = [
+    "vendor/**",
+    "**/pnpm-lock.yaml",
+    "skills-lock.json",
+    ".devcontainer/devcontainer-lock.json",
+    ".agents/**",
+    "**/CHANGELOG.md",
+    "packages/core/docker/containers.json",
+]
