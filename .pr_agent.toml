@@ -3,40 +3,45 @@
 # Options: https://github.com/The-PR-Agent/pr-agent/blob/v0.50.0/pr_agent/settings/configuration.toml
 
 [github_app]
-# Review draft pull requests too, and run /describe and /review again on every push.
+# Review draft pull requests too, and run /describe and /review again after each push by a person.
+# The PR-Agent host skips pull requests and pushes from bot accounts.
 feedback_on_draft_pr = true
 handle_push_trigger = true
 
 [pr_reviewer]
 num_max_findings = 5
 extra_instructions = """\
-Also check these rules:
+Repository rules. Check every rule in each area the diff touches. A changed line that breaks one is a finding, even when the code runs.
 
 Secrets:
-- A new token or password passes through the secret masker before anything logs it: `setSecrets` in `extensions/azure/src/common.ts`, `secretMasker` in `packages/cli/src/utils/masker.ts`, or the `SecretMasker` passed to `packages/core/src/runner/run.ts`. Flag tokens in URLs, error messages or log lines.
-- Registry credentials reach only the proxy, through `buildProxyConfig` in `packages/core/src/runner/proxy.ts`. Flag credentials added to the updater container `Env` in `updater-builder.ts` or to the job file.
-- Files under `packages/core/fixtures/` and `bruno/` hold synthetic data only: no real tokens, organisation URLs or email addresses. `bruno/.env.sample` keeps placeholder values.
+- A new token or password goes through the secret masker before anything logs it: `setSecrets` in `extensions/azure/src/common.ts`, `secretMasker` in `packages/cli/src/utils/masker.ts`, or the `SecretMasker` passed to `packages/core/src/runner/run.ts`. Tokens never appear in URLs, error messages or log lines.
+- Registry credentials reach only the proxy, through `buildProxyConfig` in `packages/core/src/runner/proxy.ts`. They never go into the updater container `Env` in `updater-builder.ts` or into the job file.
+- Files under `packages/core/fixtures/` and `bruno/` hold synthetic data: no real tokens, organisation URLs or email addresses. `bruno/.env.sample` keeps placeholder values.
 
-Runner and images (packages/core/src/runner, packages/core/docker):
-- Updater and proxy images change in `packages/core/docker/Dockerfile.*`, pinned by tag and `@sha256` digest. `pnpm scripts:update-container-manifest` rebuilds `containers.json`. A new ecosystem adds a Dockerfile and an entry in `update-containers.ts`.
-- Containers and networks are removed on failure paths too (`proxy.ts`, `container-service.ts`, `cleanup.ts`).
+Runner and images (`packages/core/src/runner/`, `packages/core/docker/`):
+- Every `FROM` line in `Dockerfile.*` pins a tag and an `@sha256` digest.
+- A new `Dockerfile.*` comes with its entry in the `manifest` object in `update-containers.ts`.
+- Flag a new container or network that is not removed when a later step throws.
 
-Azure DevOps (packages/core/src/azure, extensions/azure):
-- REST calls go through the `client-*.ts` classes and `makeUrl` in `client-base.ts`, which adds `api-version`.
-- Inputs in `extensions/azure/tasks/**/task.json` are a public contract. Flag renamed, removed or re-defaulted inputs. A new input is read in `src/v2/inputs.ts` and covered in `src/v2/inputs.test.ts`.
-- `scripts/update-versions.mjs` sets the versions in `task.json` and `vss-extension.json` during `pnpm packages:version`. Flag hand edits to those version fields.
+Azure DevOps (`packages/core/src/azure/`, `extensions/azure/`):
+- Azure DevOps REST calls go through the `client-*.ts` classes and `makeUrl` in `client-base.ts`, which adds `api-version`.
+- Flag a renamed, removed or re-defaulted input in `tasks/**/task.json`; existing pipelines depend on these inputs.
+- Flag a hand edit to the version fields of `task.json` or `vss-extension.json`; `scripts/update-versions.mjs` sets them during `pnpm packages:version`.
 
-Changes and tests:
-- Behaviour changes in `packages/*` or `extensions/azure/src` add or update a Vitest `*.test.ts` next to the source and a changeset in `.changeset/`.
-- A change to `dependabot.yml` parsing in `packages/core/src/dependabot/config.ts` adds a fixture under `packages/core/fixtures/config/` and a case in `config.test.ts`.
-- The `dependabot-action`, `dependabot-cli`, `dependabot-fetch-metadata` and `dependabot-proxy` directories are upstream submodules. Flag pointer bumps without a stated reason.
-- `pnpm-workspace.yaml` keeps `minimumReleaseAge` and the `allowBuilds` entries set to `false`. Flag new install-script approvals.
+Changesets (`packages/`, `extensions/azure/src/`):
+- A behaviour change adds a changeset file in `.changeset/`.
+
+Dependencies (`pnpm-workspace.yaml`, `dependabot-action`, `dependabot-cli`, `dependabot-fetch-metadata`, `dependabot-proxy`):
+- A submodule pointer bump states its reason in the PR description.
+- Flag a `minimumReleaseAge` below `1440` or an `allowBuilds` entry set to `true`.
 """
 
 [pr_code_suggestions]
 # Publish only suggestions scored 5 or higher (0-10).
 suggestions_score_threshold = 5
-extra_instructions = "Prefer existing project helpers and patterns over new abstractions. Do not suggest edits to packages/core/docker/containers.json, CHANGELOG.md files, lock files or the vendored skills under .agents/."
+# Drop a suggestion whose score could not be computed; the default 7 would publish it.
+score_on_reflection_failure = 4
+extra_instructions = "Prefer existing project helpers and patterns over new abstractions."
 
 [ignore]
 # Generated code and lock files. Replaces the default list; keep vendor/** first.
